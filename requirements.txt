@@ -1,14 +1,4 @@
-# SoundLocal Logging Package
-
-Dependencies for the complete logging system.
-
-## Required
-aiohttp>=3.8.0  # For Discord webhook requests
-cryptography>=41.0.0  # For webhook URL encryption
-sqlalchemy>=2.0.0  # For database logging
-asyncpg>=0.28.0  # PostgreSQL async driver
-
-## Optional (if not already in your project)
-python-dotenv>=1.0.0  # For loading .env files
-fastapi>=0.100.0  # If using the API routes
-pydantic>=2.0.0  # For data validation
+aiohttp>=3.8.0
+cryptography>=41.0.0
+sqlalchemy>=2.0.0
+asyncpg>=0.28.0
