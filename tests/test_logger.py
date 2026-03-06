@@ -7,6 +7,7 @@ from hibiki_core.logger import (
     get_logger,
     add_context_to_logger,
     AsyncDBHandler,
+    reset_db_handler,
     _logger_namespace,
 )
 import hibiki_core.logger as logger_module
@@ -25,16 +26,20 @@ class TestConfigureLogging:
     def test_extra_loggers(self):
         configure_logging(namespace="app", extra_loggers=["uvicorn", "fastapi"])
         uvicorn_logger = logging.getLogger("uvicorn")
-        assert uvicorn_logger.level is not None
+        assert uvicorn_logger.level == logging.INFO
+        assert len(uvicorn_logger.handlers) > 0
 
     def test_production_mode_sets_json(self, monkeypatch):
-        monkeypatch.setenv("ENV", "production")
-        configure_logging(namespace="app")
         root = logging.getLogger()
-        handler_classes = [type(h).__name__ for h in root.handlers]
-        assert len(root.handlers) > 0
-        monkeypatch.setenv("ENV", "development")
-        configure_logging(namespace="app")
+        original_handlers = root.handlers[:]
+        try:
+            monkeypatch.setenv("ENV", "production")
+            configure_logging(namespace="app")
+            assert len(root.handlers) > 0
+        finally:
+            root.handlers = original_handlers
+            monkeypatch.setenv("ENV", "development")
+            configure_logging(namespace="app")
 
 
 class TestGetLogger:
@@ -46,8 +51,7 @@ class TestGetLogger:
 
     def test_namespace_logger_gets_db_handler(self):
         configure_logging(namespace="testns")
-        # Reset handler state
-        logger_module._db_handler = None
+        reset_db_handler()
         lgr = get_logger("testns.sub")
         has_db = any(isinstance(h, AsyncDBHandler) for h in lgr.handlers)
         assert has_db
@@ -60,7 +64,7 @@ class TestGetLogger:
 
     def test_exact_namespace_match(self):
         configure_logging(namespace="exact")
-        logger_module._db_handler = None
+        reset_db_handler()
         lgr = get_logger("exact")
         has_db = any(isinstance(h, AsyncDBHandler) for h in lgr.handlers)
         assert has_db

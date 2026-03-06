@@ -1,6 +1,5 @@
 include README.md
 include LICENSE
-include requirements.txt
 include CONTRIBUTING.md
 include EXAMPLE.md
-recursive-include . *.py
+recursive-include hibiki_core *.py

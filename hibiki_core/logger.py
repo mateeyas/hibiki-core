@@ -1,3 +1,4 @@
+import copy
 import logging
 import logging.config
 import os
@@ -57,7 +58,7 @@ def configure_logging(namespace: str = "app", extra_loggers: Optional[List[str]]
     global _logger_namespace
     _logger_namespace = namespace
 
-    config = dict(_BASE_LOGGING_CONFIG)
+    config = copy.deepcopy(_BASE_LOGGING_CONFIG)
     config["loggers"] = {}
 
     all_logger_names = [namespace]
@@ -255,6 +256,8 @@ class AsyncDBHandler(logging.Handler):
     Only logs messages at or above the configured minimum level.
     """
 
+    _background_tasks: set = set()
+
     def __init__(self, level=None):
         if level is None:
             level = DB_LOG_MIN_LEVEL
@@ -277,7 +280,7 @@ class AsyncDBHandler(logging.Handler):
 
             try:
                 loop = asyncio.get_running_loop()
-                asyncio.create_task(
+                db_task = asyncio.create_task(
                     log_to_db(
                         level=record.levelname,
                         message=message,
@@ -288,9 +291,11 @@ class AsyncDBHandler(logging.Handler):
                         trace=trace,
                     )
                 )
+                self._background_tasks.add(db_task)
+                db_task.add_done_callback(self._background_tasks.discard)
 
                 if record.levelno >= DISCORD_LOG_MIN_LEVEL:
-                    asyncio.create_task(
+                    discord_task = asyncio.create_task(
                         log_to_discord(
                             level=record.levelname,
                             message=message,
@@ -301,6 +306,8 @@ class AsyncDBHandler(logging.Handler):
                             method=method,
                         )
                     )
+                    self._background_tasks.add(discord_task)
+                    discord_task.add_done_callback(self._background_tasks.discard)
             except RuntimeError:
                 print(f"DB Log: {record.levelname} - {message}")
         except Exception as e:
@@ -309,6 +316,12 @@ class AsyncDBHandler(logging.Handler):
 
 
 _db_handler = None
+
+
+def reset_db_handler():
+    """Reset the global DB handler. Intended for use in tests."""
+    global _db_handler
+    _db_handler = None
 
 
 def register_db_handler_with_loggers():

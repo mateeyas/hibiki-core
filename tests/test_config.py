@@ -1,22 +1,50 @@
 import os
+import importlib
 import pytest
 from hibiki_core.config import LoggingConfig, config
+import hibiki_core.config as config_module
 
 
 class TestLoggingConfigDefaults:
-    def test_default_environment(self):
-        assert config.ENVIRONMENT == os.getenv("ENV", "development")
+    def test_default_environment(self, monkeypatch):
+        monkeypatch.delenv("ENV", raising=False)
+        importlib.reload(config_module)
+        assert config_module.config.ENVIRONMENT == "development"
 
-    def test_default_db_min_level(self):
-        assert config.LOG_DB_MIN_LEVEL == os.getenv("LOG_DB_MIN_LEVEL", "WARNING")
+    def test_custom_environment(self, monkeypatch):
+        monkeypatch.setenv("ENV", "production")
+        importlib.reload(config_module)
+        assert config_module.config.ENVIRONMENT == "production"
 
-    def test_default_discord_min_level(self):
-        assert config.LOG_DISCORD_MIN_LEVEL == os.getenv("LOG_DISCORD_MIN_LEVEL", "ERROR")
+    def test_default_db_min_level(self, monkeypatch):
+        monkeypatch.delenv("LOG_DB_MIN_LEVEL", raising=False)
+        importlib.reload(config_module)
+        assert config_module.config.LOG_DB_MIN_LEVEL == "WARNING"
 
-    def test_encryption_key_optional_by_default(self):
-        # ENCRYPTION_KEY should be None if not set in environment
-        if "ENCRYPTION_KEY" not in os.environ:
-            assert config.ENCRYPTION_KEY is None
+    def test_custom_db_min_level(self, monkeypatch):
+        monkeypatch.setenv("LOG_DB_MIN_LEVEL", "DEBUG")
+        importlib.reload(config_module)
+        assert config_module.config.LOG_DB_MIN_LEVEL == "DEBUG"
+
+    def test_default_discord_min_level(self, monkeypatch):
+        monkeypatch.delenv("LOG_DISCORD_MIN_LEVEL", raising=False)
+        importlib.reload(config_module)
+        assert config_module.config.LOG_DISCORD_MIN_LEVEL == "ERROR"
+
+    def test_custom_discord_min_level(self, monkeypatch):
+        monkeypatch.setenv("LOG_DISCORD_MIN_LEVEL", "WARNING")
+        importlib.reload(config_module)
+        assert config_module.config.LOG_DISCORD_MIN_LEVEL == "WARNING"
+
+    def test_encryption_key_optional_by_default(self, monkeypatch):
+        monkeypatch.delenv("ENCRYPTION_KEY", raising=False)
+        importlib.reload(config_module)
+        assert config_module.config.ENCRYPTION_KEY is None
+
+    def test_encryption_key_when_set(self, monkeypatch):
+        monkeypatch.setenv("ENCRYPTION_KEY", "my-secret-key")
+        importlib.reload(config_module)
+        assert config_module.config.ENCRYPTION_KEY == "my-secret-key"
 
 
 class TestLoggingConfigValidate:

@@ -46,7 +46,7 @@ def anonymize_email(email: str) -> str:
         return f"{anonymized_local}@{domain}"
 
     except Exception as e:
-        logger.error(f"Error anonymizing email {email}: {str(e)}")
+        logger.error("Error anonymizing email: %s", str(e))
         return email
 
 
