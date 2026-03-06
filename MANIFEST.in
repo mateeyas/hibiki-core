@@ -3,5 +3,4 @@ include LICENSE
 include requirements.txt
 include CONTRIBUTING.md
 include EXAMPLE.md
-include REVIEW.md
 recursive-include . *.py

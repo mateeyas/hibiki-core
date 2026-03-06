@@ -8,7 +8,7 @@ with open("requirements.txt", "r", encoding="utf-8") as fh:
 
 setup(
     name="hibiki-core",
-    version="1.0.0",
+    version="2.0.0",
     author="Matt",
     description="A complete logging solution with console, database, and Discord notification support",
     long_description=long_description,
@@ -27,6 +27,9 @@ setup(
     python_requires=">=3.8",
     install_requires=requirements,
     extras_require={
+        "postgres": [
+            "asyncpg>=0.28.0",
+        ],
         "dev": [
             "pytest>=7.0",
             "pytest-asyncio>=0.21",

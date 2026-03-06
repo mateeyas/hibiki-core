@@ -1,25 +1,15 @@
 import aiohttp
-import json
-import re
-from typing import Dict, Any, Optional
+from typing import Optional
 
-# Use relative imports for package
-try:
-    from .config import config as settings
-except ImportError:
-    from app.core.config import settings
-
-try:
-    from .logger import get_logger
-except ImportError:
-    from app.core.logger import get_logger
+from .config import config as settings
+from .logger import get_logger
 
 logger = get_logger("hibiki_core.discord")
 
 
 def anonymize_email(email: str) -> str:
     """
-    Anonymize an email address while keeping it identifiable
+    Anonymize an email address while keeping it identifiable.
 
     Examples:
         john.doe@example.com -> j***.d***@example.com
@@ -36,12 +26,9 @@ def anonymize_email(email: str) -> str:
         return email
 
     try:
-        # Split email into local and domain parts
         local_part, domain = email.split("@", 1)
 
-        # Anonymize local part
         if "." in local_part:
-            # Handle emails with dots: john.doe -> j***.d***
             parts = local_part.split(".")
             anonymized_parts = []
             for part in parts:
@@ -51,7 +38,6 @@ def anonymize_email(email: str) -> str:
                     anonymized_parts.append(part)
             anonymized_local = ".".join(anonymized_parts)
         else:
-            # Handle emails without dots: user -> u***
             if len(local_part) > 1:
                 anonymized_local = f"{local_part[0]}***"
             else:
@@ -61,7 +47,7 @@ def anonymize_email(email: str) -> str:
 
     except Exception as e:
         logger.error(f"Error anonymizing email {email}: {str(e)}")
-        return email  # Return original if anonymization fails
+        return email
 
 
 async def send_discord_notification(
@@ -71,7 +57,7 @@ async def send_discord_notification(
     avatar_url: Optional[str] = None,
 ) -> bool:
     """
-    Send a notification to Discord using a webhook
+    Send a notification to Discord using a webhook.
 
     Args:
         message: The message to send
@@ -122,7 +108,7 @@ async def send_user_signup_notification(
     username: Optional[str] = None,
 ) -> bool:
     """
-    Send a notification when a new user signs up
+    Send a notification when a new user signs up.
 
     Args:
         email: The email of the new user
@@ -133,41 +119,43 @@ async def send_user_signup_notification(
     Returns:
         bool: True if successful, False otherwise
     """
-    # Anonymize the email for privacy
     anonymized_email = anonymize_email(email)
     message = message_template.format(email=anonymized_email)
 
     return await send_discord_notification(
         message=message,
         webhook_url=webhook_url,
-        username=username or "SoundLocal Bot",  # Use provided username or default
-        avatar_url="https://cdn.discordapp.com/emojis/🎉.png",
+        username=username or "Hibiki Bot",
     )
 
 
 async def send_notification_by_type(
-    notification_type: str, webhook_url: str, message_template: str, **template_vars
+    notification_type: str,
+    webhook_url: str,
+    message_template: str,
+    username: Optional[str] = None,
+    **template_vars,
 ) -> bool:
     """
-    Send a notification for any notification type with template variables
+    Send a notification for any notification type with template variables.
 
     Args:
         notification_type: Type of notification (e.g., "user_signup", "subscription", "log")
         webhook_url: Discord webhook URL
         message_template: Template for the message
+        username: Optional username for the webhook
         **template_vars: Variables to substitute in the template
 
     Returns:
         bool: True if successful, False otherwise
     """
     try:
-        # Anonymize email if it's in the template variables
         if "email" in template_vars:
             template_vars["email"] = anonymize_email(template_vars["email"])
 
         message = message_template.format(**template_vars)
         return await send_discord_notification(
-            message=message, webhook_url=webhook_url, username="SoundLocal Bot"
+            message=message, webhook_url=webhook_url, username=username or "Hibiki Bot"
         )
     except KeyError as e:
         logger.error(
@@ -193,8 +181,8 @@ async def send_error_notification(
     method: Optional[str] = None,
 ) -> bool:
     """
-    Send an error notification to Discord with formatted details
-    
+    Send an error notification to Discord with formatted details.
+
     Args:
         level: Log level (ERROR, CRITICAL)
         message: Error message
@@ -205,35 +193,31 @@ async def send_error_notification(
         user_id: Optional user ID
         path: Optional request path
         method: Optional HTTP method
-        
+
     Returns:
         bool: True if successful, False otherwise
     """
-    # Truncate message if too long (Discord limit is 2000 chars)
     truncated_message = message[:500] if len(message) > 500 else message
-    
-    # Build the notification message
+
     discord_message = f"**{level}** in `{logger_name}`\n"
     discord_message += f"```\n{truncated_message}\n```"
-    
+
     if path:
         discord_message += f"\n**Path:** `{path}`"
     if method:
         discord_message += f" **Method:** `{method}`"
     if user_id:
         discord_message += f"\n**User ID:** `{user_id}`"
-    
+
     if trace:
-        # Truncate trace if too long
         truncated_trace = trace[:800] if len(trace) > 800 else trace
         discord_message += f"\n**Trace:**\n```\n{truncated_trace}\n```"
-    
-    # Ensure total message doesn't exceed Discord's limit
+
     if len(discord_message) > 1900:
         discord_message = discord_message[:1900] + "\n...(truncated)"
-    
+
     return await send_discord_notification(
         message=discord_message,
         webhook_url=webhook_url,
-        username=username or "SoundLocal Error Bot"
+        username=username or "Hibiki Error Bot"
     )
