@@ -1,253 +1,168 @@
 # Hibiki Core
 
-A complete, production-ready logging system with console, database, and Discord notification support.
+A production-ready logging system with console, database, and Discord notification support.
 
-[![Python 3.8+](https://img.shields.io/badge/python-3.8+-blue.svg)](https://www.python.org/downloads/)
+[![Python 3.10+](https://img.shields.io/badge/python-3.10+-blue.svg)](https://www.python.org/downloads/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
 ## Features
 
-- ✅ **Console Logging** - Standard output with configurable formatting
-- ✅ **Database Logging** - Store logs in PostgreSQL with configurable minimum level
-- ✅ **Discord Notifications** - Automatic notifications via webhooks for errors
-- ✅ **Non-blocking** - All DB and Discord operations are async
-- ✅ **Encrypted Storage** - Discord webhook URLs encrypted in database
-- ✅ **Context Support** - Add user_id, request path, HTTP method to logs
-- ✅ **Configurable Levels** - Separate control for DB and Discord
+- **Console Logging** - Human-readable or JSON-formatted output
+- **Database Logging** - Store logs in PostgreSQL (or any SQLAlchemy-supported DB)
+- **Discord Notifications** - Automatic webhook notifications for errors
+- **Non-blocking** - All DB and Discord operations are async
+- **Encrypted Storage** - Discord webhook URLs encrypted at rest
+- **Context Support** - Attach user_id, request path, HTTP method to logs
+- **Configurable Levels** - Separate thresholds for console, DB, and Discord
+
+## Installation
+
+```bash
+pip install hibiki-core
+
+# With PostgreSQL support
+pip install hibiki-core[postgres]
+```
 
 ## Quick Start
 
-### 1. Installation
-
-```bash
-# From PyPI (when published)
-pip install hibiki-core
-
-# From source
-git clone https://github.com/yourusername/hibiki-core.git
-cd hibiki-core
-pip install -e .
-
-# Or copy directly into your project
-cp -r hibiki_core /path/to/your/project/
-pip install aiohttp cryptography sqlalchemy asyncpg
-```
-
-### 2. Environment Variables
-
-```bash
-# Required
-ENCRYPTION_KEY=your_encryption_key_here  # Generate with: python -c "from hibiki_core.encryption import generate_key; print(generate_key())"
-
-# Optional (defaults shown)
-LOG_DB_MIN_LEVEL=WARNING    # What gets saved to database
-LOG_DISCORD_MIN_LEVEL=ERROR # What gets sent to Discord
-
-# Optional - Console Format (only affects console output, not DB or Discord)
-# ENV=production  # Uncomment for JSON-formatted console logs (for log aggregation tools like ELK, Datadog)
-                  # Leave commented/unset for human-readable console logs (default)
-```
-
-### 3. Database Setup
-
-**Option A: Use the factory functions (recommended)**
+### Console-only (no database)
 
 ```python
+from hibiki_core import configure_logging, get_logger
+
+configure_logging(namespace="myapp")
+
+logger = get_logger("myapp.service")
+logger.info("Ready")
+logger.error("Something broke", exc_info=True)
+```
+
+### With database and Discord
+
+```python
+from sqlalchemy.ext.asyncio import create_async_engine, async_sessionmaker
 from sqlalchemy.orm import declarative_base
+from hibiki_core import configure_logging, setup_db_logging, get_logger
 from hibiki_core.models import create_log_model, create_discord_config_model
 
+# Define models
 Base = declarative_base()
-
-# Create models
 Log = create_log_model(Base)
 DiscordNotificationConfig = create_discord_config_model(Base)
 
-# Create tables
-Base.metadata.create_all(engine)
-```
+# Create async engine and session
+engine = create_async_engine("postgresql+asyncpg://user:pass@localhost/db")
+session_maker = async_sessionmaker(engine, expire_on_commit=False)
 
-**Option B: Use the SQL directly**
-
-```python
-from logging_package.models import LOG_TABLE_SQL, DISCORD_CONFIG_TABLE_SQL
-
-# Execute the SQL against your database
-```
-
-### 4. Initialize Logging
-
-```python
-from hibiki_core import configure_logging, setup_db_logging, get_logger
-
-# Configure console logging (call once at app startup)
-configure_logging()
-
-# Setup database and Discord logging (after DB is initialized)
+# Initialize logging (call once at startup)
+configure_logging(namespace="myapp")
 setup_db_logging(
-    session_maker=your_async_session_maker,
+    session_maker=session_maker,
     log_model=Log,
-    discord_config_model=DiscordNotificationConfig  # Optional, for Discord notifications
+    namespace="myapp",
+    discord_config_model=DiscordNotificationConfig,  # optional
 )
 
-# Use in your code
-logger = get_logger(__name__)
+logger = get_logger("myapp.module")
 logger.error("Something went wrong", exc_info=True)
 ```
 
-## Usage
-
-### Basic Logging
+Alternatively, create tables directly with raw SQL:
 
 ```python
-from logging_package import get_logger
-
-logger = get_logger("app.payments")
-
-# Standard logging
-logger.debug("Debug message")
-logger.info("Info message")
-logger.warning("Warning message")
-logger.error("Error message")
-logger.critical("Critical message")
-
-# With exception info
-try:
-    risky_operation()
-except Exception as e:
-    logger.error(f"Operation failed: {str(e)}", exc_info=True)
+from hibiki_core.models import LOG_TABLE_SQL, DISCORD_CONFIG_TABLE_SQL
 ```
-
-### Logging with Context
-
-```python
-from logging_package import get_logger, add_context_to_logger
-
-logger = get_logger("app.users")
-
-# Add request context
-context_logger = add_context_to_logger(
-    logger,
-    user_id=user.id,
-    path="/api/users",
-    method="POST"
-)
-
-context_logger.error("User creation failed")
-# Discord notification will include user_id, path, and method
-```
-
-### Discord Setup
-
-1. Create a Discord webhook in your server
-2. Configure via your application's API or database directly:
-
-```sql
-INSERT INTO discord_notification_config (
-    notification_type,
-    webhook_url_encrypted,
-    username,
-    is_enabled
-) VALUES (
-    'log',
-    'ENCRYPTED_WEBHOOK_URL',  -- Use encryption.encrypt() function
-    'Bot Name',
-    true
-);
-```
-
-Or use the API routes (copy `app/routes/discord_notifications.py` to your project).
 
 ## Configuration
 
 ### Environment Variables
 
-```bash
-# Required
-ENCRYPTION_KEY=your_key  # For encrypting Discord webhook URLs
+| Variable | Default | Description |
+|---|---|---|
+| `ENCRYPTION_KEY` | *(none)* | Required if using Discord webhook encryption. Generate with: `python -c "from hibiki_core.encryption import generate_key; print(generate_key())"` |
+| `LOG_DB_MIN_LEVEL` | `WARNING` | Minimum level saved to database. Options: `DEBUG`, `INFO`, `WARNING`, `ERROR`, `CRITICAL` |
+| `LOG_DISCORD_MIN_LEVEL` | `ERROR` | Minimum level sent to Discord. Same options as above. |
+| `ENV` | `development` | Set to `production` for JSON console output **and** ERROR-only console log level. Leave unset for human-readable output at INFO level. |
 
-# Database and Discord logging levels
-LOG_DB_MIN_LEVEL=WARNING    # Database: DEBUG, INFO, WARNING, ERROR, CRITICAL
-LOG_DISCORD_MIN_LEVEL=ERROR # Discord: DEBUG, INFO, WARNING, ERROR, CRITICAL
+### Namespace
 
-# Console logging format (optional)
-ENV=production  # Set to "production" for JSON logs (for ELK, Datadog, etc.)
-                # Leave unset for human-readable logs (default)
-                # NOTE: Only affects console format, not DB or Discord
-```
-
-### Log Levels
-
-Control what gets logged to each destination:
-
-```bash
-# Database: WARNING and above (saves disk space)
-LOG_DB_MIN_LEVEL=WARNING
-
-# Discord: ERROR and above (reduces noise)
-LOG_DISCORD_MIN_LEVEL=ERROR
-```
-
-Options: `DEBUG`, `INFO`, `WARNING`, `ERROR`, `CRITICAL`
-
-### Common Configurations
-
-**Production (minimal):**
-
-```bash
-ENV=production              # JSON-formatted console logs
-LOG_DB_MIN_LEVEL=WARNING
-LOG_DISCORD_MIN_LEVEL=CRITICAL
-```
-
-**Production (readable console logs):**
-
-```bash
-# ENV not set                # Human-readable console logs
-LOG_DB_MIN_LEVEL=WARNING
-LOG_DISCORD_MIN_LEVEL=ERROR
-```
-
-**Development (verbose):**
-
-```bash
-# ENV not set or ENV=development
-LOG_DB_MIN_LEVEL=DEBUG
-LOG_DISCORD_MIN_LEVEL=WARNING
-```
-
-**Troubleshooting:**
-
-```bash
-# ENV not set
-LOG_DB_MIN_LEVEL=DEBUG
-LOG_DISCORD_MIN_LEVEL=ERROR
-```
-
-## API
-
-### Main Functions
+The `namespace` parameter controls which loggers receive DB and Discord handlers. Only loggers whose names start with the namespace will log to the database and Discord.
 
 ```python
-from logging_package import (
-    configure_logging,      # Setup console logging
-    setup_db_logging,       # Setup DB + Discord logging
-    get_logger,             # Get a logger instance
-    add_context_to_logger,  # Add context to logs
-    log_to_db,              # Manually log to DB
-    log_to_discord,         # Manually send to Discord
-    log_error,              # Log an exception
-)
+configure_logging(namespace="myapp")
+setup_db_logging(session_maker=..., log_model=..., namespace="myapp")
+
+logger = get_logger("myapp.api")     # Gets DB + Discord handlers
+logger = get_logger("other.module")  # Console only
 ```
+
+Use `extra_loggers` to include third-party loggers:
+
+```python
+configure_logging(namespace="myapp", extra_loggers=["uvicorn", "fastapi"])
+```
+
+### Logging with Context
+
+```python
+from hibiki_core import get_logger, add_context_to_logger
+
+logger = get_logger("myapp.users")
+context_logger = add_context_to_logger(logger, user_id="123", path="/api/users", method="POST")
+context_logger.error("User creation failed")
+```
+
+### Discord Setup
+
+1. Create a webhook in your Discord server.
+2. Encrypt the URL and store it in the `discord_notification_config` table with `notification_type = 'log'` and `is_enabled = true`.
+
+```python
+from hibiki_core.encryption import encrypt
+encrypted_url = encrypt("https://discord.com/api/webhooks/...")
+```
+
+Discord error messages include the logger name, message, traceback, and any attached context (user_id, path, method).
+
+## API Reference
+
+### Core Functions
+
+#### `configure_logging(namespace="app", extra_loggers=None)`
+
+Configure console logging. Call once at app startup.
+
+#### `setup_db_logging(session_maker, log_model, discord_config_model=None, namespace="app")`
+
+Initialize database and optional Discord logging. Call after your database is ready.
+
+#### `get_logger(name) -> logging.Logger`
+
+Get a logger. If `name` matches the configured namespace, DB/Discord handlers are attached automatically.
+
+#### `add_context_to_logger(logger, user_id=None, path=None, method=None) -> logging.LoggerAdapter`
+
+Wrap a logger with request context that is included in DB and Discord log entries.
+
+#### `async log_to_db(level, message, logger_name, user_id=None, path=None, method=None, trace=None)`
+
+Manually log a message to the database (respects `LOG_DB_MIN_LEVEL`).
+
+#### `async log_to_discord(level, message, logger_name, trace=None, user_id=None, path=None, method=None)`
+
+Manually send a notification to Discord (respects `LOG_DISCORD_MIN_LEVEL`).
+
+#### `async log_error(error, logger_name, message=None, user_id=None, path=None, method=None)`
+
+Log an exception to the database with its traceback automatically extracted.
 
 ### Encryption Utilities
 
 ```python
-from logging_package.encryption import encrypt, decrypt, generate_key
+from hibiki_core.encryption import encrypt, decrypt, generate_key
 
-# Generate a new encryption key
 key = generate_key()
-
-# Encrypt/decrypt webhook URLs
 encrypted = encrypt("https://discord.com/api/webhooks/...")
 original = decrypt(encrypted)
 ```
@@ -255,146 +170,67 @@ original = decrypt(encrypted)
 ### Models
 
 ```python
-from logging_package.models import (
-    create_log_model,
-    create_discord_config_model,
-    LOG_TABLE_SQL,
-    DISCORD_CONFIG_TABLE_SQL,
+from hibiki_core.models import (
+    create_log_model,              # Factory: Log model bound to your Base
+    create_discord_config_model,   # Factory: DiscordNotificationConfig model
+    LOG_TABLE_SQL,                 # Raw SQL for logs table (PostgreSQL)
+    DISCORD_CONFIG_TABLE_SQL,      # Raw SQL for discord_notification_config table
 )
 ```
 
-## File Structure
-
-```
-logging_package/
-├── __init__.py              # Package exports
-├── logger.py                # Core logging functionality
-├── discord_service.py       # Discord webhook integration
-├── config.py                # Configuration management
-├── encryption.py            # Webhook URL encryption
-├── models.py                # Database model factories
-├── requirements.txt         # Dependencies
-└── README.md               # This file
-```
-
-## Integration with Existing Projects
+## Framework Integration
 
 ### FastAPI
 
 ```python
+from contextlib import asynccontextmanager
 from fastapi import FastAPI
-from logging_package import configure_logging, setup_db_logging, get_logger
+from hibiki_core import configure_logging, setup_db_logging, get_logger
 
-app = FastAPI()
-
-@app.on_event("startup")
-async def startup_event():
-    configure_logging()
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    configure_logging(namespace="app", extra_loggers=["uvicorn", "fastapi"])
     setup_db_logging(
         session_maker=async_session_maker,
         log_model=Log,
-        discord_config_model=DiscordNotificationConfig  # Optional
+        namespace="app",
+        discord_config_model=DiscordNotificationConfig,
     )
+    yield
 
-logger = get_logger(__name__)
-
-@app.get("/")
-async def root():
-    logger.info("Root endpoint accessed")
-    return {"message": "Hello"}
+app = FastAPI(lifespan=lifespan)
+logger = get_logger("app.routes")
 ```
 
 ### Django
 
 ```python
-# In settings.py
-import logging
-from logging_package import configure_logging
+# settings.py
+from hibiki_core import configure_logging
+configure_logging(namespace="myproject")
 
-configure_logging()
-
-# In your views
-from logging_package import get_logger
-
-logger = get_logger(__name__)
-
-def my_view(request):
-    logger.info("View accessed")
-    return HttpResponse("Hello")
+# views.py
+from hibiki_core import get_logger
+logger = get_logger("myproject.views")
 ```
 
 ### Flask
 
 ```python
-from flask import Flask
-from logging_package import configure_logging, get_logger
+from hibiki_core import configure_logging, get_logger
 
-app = Flask(__name__)
-configure_logging()
-
-logger = get_logger(__name__)
-
-@app.route("/")
-def hello():
-    logger.info("Hello endpoint")
-    return "Hello"
-```
-
-## Discord Message Format
-
-When errors are sent to Discord, they include:
-
-```
-**ERROR** in `app.routes.payment`
-```
-
-Payment processing failed: Connection timeout
-
-```
-
-**Path:** `/api/v1/payments` **Method:** `POST`
-**User ID:** `user-12345`
-**Trace:**
-```
-
-Traceback (most recent call last):
-File "/app/routes/payment.py", line 45
-...
-
-```
-
+configure_logging(namespace="myapp")
+logger = get_logger("myapp.routes")
 ```
 
 ## Troubleshooting
 
-### Logs not appearing in database
+**Logs not appearing in database** - Verify `setup_db_logging()` was called, your logger name matches the namespace, and `LOG_DB_MIN_LEVEL` allows the level.
 
-1. Check `LOG_DB_MIN_LEVEL` is set correctly
-2. Verify `setup_db_logging()` was called
-3. Check database connection
+**Discord notifications not sending** - Check that a row exists in `discord_notification_config` with `notification_type = 'log'` and `is_enabled = true`, and that `LOG_DISCORD_MIN_LEVEL` allows the level.
 
-### Discord notifications not sending
-
-1. Verify webhook URL is configured in database
-2. Check `LOG_DISCORD_MIN_LEVEL` allows the log level
-3. Ensure `notification_type = 'log'` and `is_enabled = true`
-4. Test webhook manually:
-   ```bash
-   curl -X POST "WEBHOOK_URL" \
-     -H "Content-Type: application/json" \
-     -d '{"content": "Test"}'
-   ```
-
-### Encryption errors
-
-1. Ensure `ENCRYPTION_KEY` is set
-2. If you change the key, re-encrypt all webhook URLs
-3. Generate new key: `python -c "from hibiki_core.encryption import generate_key; print(generate_key())"`
+**Encryption errors** - Ensure `ENCRYPTION_KEY` is set. If you rotate the key, re-encrypt all stored webhook URLs.
 
 ## License
 
-MIT License - Feel free to use in your projects!
-
-## Support
-
-For issues or questions, refer to the main SoundLocal API documentation.
+MIT

@@ -4,31 +4,35 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "hibiki-core"
-version = "1.0.0"
+dynamic = ["version"]
 description = "A complete logging solution with console, database, and Discord notification support"
 readme = "README.md"
-requires-python = ">=3.8"
-license = {text = "MIT"}
+requires-python = ">=3.10"
+license = "MIT"
 authors = [
-    {name = "Matt", email = "your-email@example.com"}
+    {name = "Matt"}
 ]
 classifiers = [
     "Development Status :: 4 - Beta",
     "Intended Audience :: Developers",
     "Topic :: Software Development :: Libraries :: Python Modules",
     "Topic :: System :: Logging",
-    "License :: OSI Approved :: MIT License",
     "Programming Language :: Python :: 3",
-    "Programming Language :: Python :: 3.8",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
 ]
 dependencies = [
     "aiohttp>=3.8.0",
     "cryptography>=41.0.0",
     "sqlalchemy>=2.0.0",
-    "asyncpg>=0.28.0",
 ]
 
 [project.optional-dependencies]
+postgres = [
+    "asyncpg>=0.28.0",
+]
 dev = [
     "pytest>=7.0",
     "pytest-asyncio>=0.21",
@@ -41,3 +45,9 @@ Homepage = "https://github.com/mateeyas/hibiki-core"
 Documentation = "https://github.com/mateeyas/hibiki-core#readme"
 Repository = "https://github.com/mateeyas/hibiki-core"
 Issues = "https://github.com/mateeyas/hibiki-core/issues"
+
+[tool.setuptools.dynamic]
+version = {attr = "hibiki_core.__version__"}
+
+[tool.setuptools.packages.find]
+include = ["hibiki_core*"]

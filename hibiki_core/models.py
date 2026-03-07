@@ -14,7 +14,7 @@ def create_log_model(Base):
     Factory function to create Log model with your Base class.
     
     Usage:
-        from logging_package.models import create_log_model
+        from hibiki_core.models import create_log_model
         
         Log = create_log_model(Base)
     """
@@ -40,7 +40,7 @@ def create_discord_config_model(Base):
     Factory function to create DiscordNotificationConfig model.
     
     Usage:
-        from logging_package.models import create_discord_config_model
+        from hibiki_core.models import create_discord_config_model
         
         DiscordNotificationConfig = create_discord_config_model(Base)
     """

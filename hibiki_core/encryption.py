@@ -59,7 +59,7 @@ def generate_key() -> str:
         Base64-encoded encryption key
         
     Usage:
-        from logging_package.encryption import generate_key
+        from hibiki_core.encryption import generate_key
         
         key = generate_key()
         print(f"Add to .env: ENCRYPTION_KEY={key}")
