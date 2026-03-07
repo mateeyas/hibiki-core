@@ -93,11 +93,12 @@ async def send_discord_notification(
                     return True
                 else:
                     logger.error(
-                        f"Failed to send Discord notification. Status: {response.status}"
+                        "Failed to send Discord notification. Status: %s",
+                        response.status,
                     )
                     return False
     except Exception as e:
-        logger.error(f"Error sending Discord notification: {str(e)}")
+        logger.exception("Error sending Discord notification: %s", e)
         return False
 
 
@@ -159,12 +160,16 @@ async def send_notification_by_type(
         )
     except KeyError as e:
         logger.error(
-            f"Missing template variable {e} for notification type {notification_type}"
+            "Missing template variable %s for notification type %s",
+            e,
+            notification_type,
         )
         return False
     except Exception as e:
-        logger.error(
-            f"Error formatting notification for type {notification_type}: {str(e)}"
+        logger.exception(
+            "Error formatting notification for type %s: %s",
+            notification_type,
+            e,
         )
         return False
 

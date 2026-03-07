@@ -5,6 +5,17 @@ from hibiki_core.config import LoggingConfig, config
 import hibiki_core.config as config_module
 
 
+@pytest.fixture(autouse=True)
+def restore_config(monkeypatch):
+    """Reset environment variables and reload config_module after each test."""
+    yield
+    monkeypatch.delenv("ENV", raising=False)
+    monkeypatch.delenv("LOG_DB_MIN_LEVEL", raising=False)
+    monkeypatch.delenv("LOG_DISCORD_MIN_LEVEL", raising=False)
+    monkeypatch.delenv("ENCRYPTION_KEY", raising=False)
+    importlib.reload(config_module)
+
+
 class TestLoggingConfigDefaults:
     def test_default_environment(self, monkeypatch):
         monkeypatch.delenv("ENV", raising=False)
