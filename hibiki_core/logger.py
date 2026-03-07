@@ -224,7 +224,7 @@ async def log_to_discord(
             result = await session.execute(
                 select(DiscordNotificationConfig).where(
                     DiscordNotificationConfig.notification_type == "log",
-                    DiscordNotificationConfig.is_enabled == True
+                    DiscordNotificationConfig.is_enabled.is_(True)
                 )
             )
             config = result.scalar_one_or_none()

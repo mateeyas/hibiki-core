@@ -51,3 +51,6 @@ version = {attr = "hibiki_core.__version__"}
 
 [tool.setuptools.packages.find]
 include = ["hibiki_core*"]
+
+[tool.pytest.ini_options]
+asyncio_mode = "strict"
