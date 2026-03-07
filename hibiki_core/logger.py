@@ -74,9 +74,10 @@ def configure_logging(namespace: str = "app", extra_loggers: Optional[List[str]]
 
     if os.getenv("ENV", "development") == "production":
         config["root"]["level"] = "ERROR"
+        config["root"]["handlers"] = ["json_console"]
         for name in config["loggers"]:
             config["loggers"][name]["level"] = "ERROR"
-        config["root"]["handlers"] = ["json_console"]
+            config["loggers"][name]["handlers"] = ["json_console"]
 
     logging.config.dictConfig(config)
 
@@ -256,12 +257,11 @@ class AsyncDBHandler(logging.Handler):
     Only logs messages at or above the configured minimum level.
     """
 
-    _background_tasks: set = set()
-
     def __init__(self, level=None):
         if level is None:
             level = DB_LOG_MIN_LEVEL
         super().__init__(level)
+        self._background_tasks: set = set()
 
     def emit(self, record):
         if record.levelno < DB_LOG_MIN_LEVEL:
