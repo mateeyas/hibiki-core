@@ -5,6 +5,18 @@ All notable changes to Hibiki Core will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.1.0] - 2026-03-08
+
+### Added
+
+- `LLMGUIDE.md` -- a reference document for AI coding assistants (Cursor, Copilot, ChatGPT, Claude, etc.) covering API, initialization, async behavior, and common pitfalls.
+- "AI Coding Assistant Support" section in README linking to `LLMGUIDE.md`.
+
+### Removed
+
+- `SETUP_GUIDE.md` -- outdated one-time setup checklist from initial repo creation.
+- `EXAMPLE.md` -- redundant with README and contained outdated code (deprecated `@app.on_event`, missing `namespace` parameter, stale `logging_package` import).
+
 ## [2.0.0] - 2026-03-06
 
 ### Breaking Changes
@@ -66,5 +78,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Flexibility**: Optional Discord support, configurable log levels
 - **Production Ready**: Battle-tested in production environments
 
+[2.1.0]: https://github.com/mateeyas/hibiki-core/releases/tag/v2.1.0
 [2.0.0]: https://github.com/mateeyas/hibiki-core/releases/tag/v2.0.0
 [1.0.0]: https://github.com/mateeyas/hibiki-core/releases/tag/v1.0.0

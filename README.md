@@ -5,6 +5,10 @@ A production-ready logging system with console, database, and Discord notificati
 [![Python 3.10+](https://img.shields.io/badge/python-3.10+-blue.svg)](https://www.python.org/downloads/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
+## AI Coding Assistant Support
+
+If you use an AI coding assistant (Cursor, GitHub Copilot, ChatGPT, Claude, etc.), provide [`LLMGUIDE.md`](LLMGUIDE.md) as context. It contains a complete reference for the package's API, initialization sequence, async behavior, and common pitfalls -- everything the model needs to generate correct integration code.
+
 ## Features
 
 - **Console Logging** - Human-readable or JSON-formatted output
